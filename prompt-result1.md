@@ -1,170 +1,118 @@
-# Мод `net.mcreator.autoinvsee` для Minecraft Forge 1.16.5
-
-Этот мод изменяет сообщения в чате, делая ники игроков кликабельными. При нажатии на ник выполняется команда `/invsee [ник_игрока]` или `/realname [ник_игрока]` в зависимости от условий. Также мод обрабатывает сообщения, содержащие ровно три слова, одно из которых — "is".
+**Ответы на вопросы:**
 
 ---
 
-## Описание функционала
+### **Вопрос 1**  
+**Правильный ответ:**  
+\( y = C_1 + C_2 e^{-x} + C_3 x e^{-x} + C_4 e^{3x} \cos x + C_5 e^{3x} \sin x \)  
 
-1. **Сообщения с текстом "игроки рядом"**:
-   - Извлекает ники игроков, написанные не курсивом, и делает их кликабельными.
-   - При нажатии на ник:
-     - Выходит из чата.
-     - Выполняет команду `/invsee [ник_игрока]`.
-   - Если ник написан курсивом:
-     - Делает его кликабельным.
-     - Выполняет команду `/realname [ник_игрока]` без выхода из чата.
+**Пояснение:**  
+Для корней характеристического уравнения:  
+- Корень \( \lambda_1 = 0 \) (кратность 1) даёт слагаемое \( C_1 \).  
+- Корни \( \lambda_{2,3} = -1 \) (кратность 2) добавляют \( C_2 e^{-x} + C_3 x e^{-x} \).  
+- Комплексные корни \( \lambda_{4,5} = 3 \pm i \) (кратность 1) дают \( e^{3x}(C_4 \cos x + C_5 \sin x) \).  
 
-2. **Сообщения из трёх слов, содержащие "is"**:
-   - Делает последнее слово (ник игрока) кликабельным.
-   - При нажатии выполняет команду `/invsee [ник_игрока]`.
-
-3. **Форматирование**:
-   - Сохраняет исходные цвета и форматирование сообщения.
-   - Кликабельные элементы подчёркиваются.
+**Ошибки в других вариантах:**  
+- В первом варианте \( e^{2x} \) не соответствует корню \( -1 \).  
+- Во втором варианте \( x^2 e^{-x} \) соответствует кратности 3, а не 2.  
+- В третьем варианте \( e^{x} \cos 3x \) и \( \sin 3x \) неверны для корней \( 3 \pm i \).  
 
 ---
 
-## Исходный код мода
+### **Вопрос 2**  
+**Ответ:** \(-4\)  
 
-```java
-package net.mcreator.autoinvsee;
-
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.client.event.ClientChatReceivedEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraft.util.text.*;
-import net.minecraft.util.text.event.ClickEvent;
-import java.util.List;
-import java.util.regex.Pattern;
-import java.util.regex.Matcher;
-
-@Mod("autoinvsee")
-public class AutoInvseeMod {
-    public AutoInvseeMod() {
-        MinecraftForge.EVENT_BUS.register(this);
-    }
-
-    @SubscribeEvent
-    public void onClientChatReceived(ClientChatReceivedEvent event) {
-        ITextComponent message = event.getMessage();
-        String msgString = message.getString();
-
-        if (msgString.contains("игроки рядом")) {
-            ITextComponent newMessage = processNearbyPlayersMessage(message);
-            if (newMessage != null) {
-                event.setMessage(newMessage);
-            }
-        } else if (isThreeWordMessageWithIs(msgString)) {
-            ITextComponent newMessage = processIsMessage(message);
-            if (newMessage != null) {
-                event.setMessage(newMessage);
-            }
-        }
-    }
-
-    private boolean isThreeWordMessageWithIs(String msg) {
-        String[] words = msg.trim().split("\\s+");
-        return words.length == 3 && Arrays.stream(words).anyMatch(w -> w.equalsIgnoreCase("is"));
-    }
-
-    private ITextComponent processNearbyPlayersMessage(ITextComponent message) {
-        return processComponent(message, false);
-    }
-
-    private ITextComponent processComponent(ITextComponent component, boolean excludeNearbyText) {
-        IFormattableTextComponent newComponent = component.deepCopy();
-        List<ITextComponent> siblings = component.getSiblings();
-        newComponent.getSiblings().clear();
-
-        for (ITextComponent sibling : siblings) {
-            ITextComponent newSibling = processComponent(sibling, excludeNearbyText);
-            newComponent.appendSibling(newSibling);
-        }
-
-        if (component instanceof StringTextComponent) {
-            StringTextComponent textComponent = (StringTextComponent) component;
-            String text = textComponent.getText();
-            Style style = textComponent.getStyle();
-
-            if (!excludeNearbyText || !text.contains("игроки рядом") && !text.trim().isEmpty()) {
-                Style newStyle = style.createDeepCopy().setUnderlined(true);
-
-                if (!style.getItalic()) {
-                    newStyle.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/invsee " + text.trim()));
-                } else {
-                    newStyle.setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/realname " + text.trim()));
-                }
-                newComponent.setStyle(newStyle);
-            }
-        }
-
-        return newComponent;
-    }
-
-    private ITextComponent processIsMessage(ITextComponent message) {
-        String msgString = message.getString().trim();
-        String[] words = msgString.split("\\s+");
-
-        if (words.length != 3 || !Arrays.asList(words).contains("is")) {
-            return null; // Does not match condition
-        }
-
-        String nickname = words[words.length - 1];
-        IFormattableTextComponent newMessage = new StringTextComponent("");
-
-        int wordCount = 0;
-        for (ITextComponent component : message.toFlatList(t -> t)) {
-            String[] componentWords = component.getString().split("\\s+");
-            Style style = component.getStyle();
-
-            for (String word : componentWords) {
-                if (!word.isEmpty()) {
-                    wordCount++;
-                    ITextComponent wordComponent;
-
-                    if (wordCount == words.length) {
-                        Style newStyle = style.createDeepCopy()
-                                .setUnderlined(true)
-                                .setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/invsee " + nickname));
-                        wordComponent = new StringTextComponent(word).setStyle(newStyle);
-                    } else {
-                        wordComponent = new StringTextComponent(word).setStyle(style);
-                    }
-                    newMessage.append(wordComponent).appendString(" ");
-                }
-            }
-        }
-
-        return newMessage;
-    }
-}
-```
+**Пояснение:**  
+Вронскиан \( W = \begin{vmatrix} e^x & 2 \\ e^x & 0 \end{vmatrix} = e^x \cdot 0 - 2 \cdot e^x = -2e^x \).  
+При \( x = \ln 2 \):  
+\( W = -2e^{\ln 2} = -2 \cdot 2 = -4 \).  
 
 ---
 
-## Инструкция по установке
+### **Вопрос 3**  
+**Правильный ответ:**  
+Набор \(\{y_k\}\) линейно независим, если и только если их вронскиан не равен нулю хотя бы в одной точке из \((a, b)\).  
 
-1. **Создайте проект Forge Mod**:
-   - Используйте Forge Mod Generator для Minecraft 1.16.5.
-   - Установите ID мода как `autoinvsee`.
-
-2. **Добавьте исходный код**:
-   - Скопируйте код выше в файл `ChatMessageHandler.java` в папке `src/main/java/net/mcreator/autoinvsee`.
-
-3. **Соберите мод**:
-   - Используйте команду `gradlew build` для сборки мода.
-   - Готовый `.jar` файл будет находиться в папке `build/libs`.
-
-4. **Установите мод**:
-   - Поместите `.jar` файл в папку `mods` вашего клиента Minecraft.
+**Пояснение:**  
+Для решений линейного однородного уравнения линейная независимость эквивалентна ненулевому вронскиану хотя бы в одной точке. Остальные варианты противоречат теореме о вронскиане.  
 
 ---
 
-## Примечания
+### **Вопрос 4**  
+**Правильный ответ:**  
+\( z(x) = y^{(k)} \)  
 
-- **Форматирование**: Мод сохраняет исходное форматирование сообщений, добавляя только подчёркивание для кликабельных элементов.
-- **Безопасность**: Убедитесь, что команды выполняются безопасно.
-- **Производительность**: Код оптимизирован для минимального влияния на производительность.
+**Пояснение:**  
+Подстановка \( z(x) = y^{(k)} \) понижает порядок уравнения на \( k \), так как заменяет старшую производную \( y^{(k)} \) новой функцией \( z \).  
 
+---
+
+### **Вопрос 5**  
+**Правильный ответ:**  
+Точку \( (x_0, y_0) \), где \( P(x_0, y_0) = Q(x_0, y_0) = 0 \).  
+
+**Пояснение:**  
+Особая точка определяется одновременным обращением \( P \) и \( Q \) в ноль. Остальные варианты описывают особенности функций, а не уравнения.  
+
+---
+
+### **Вопрос 6**  
+**Правильный ответ:**  
+Все функции \( p_1, p_0, q \) раскладываются в степенной ряд в окрестности точки \( x_0 \).  
+
+**Пояснение:**  
+Теорема Коши требует аналитичности коэффициентов (раскладываемости в степенной ряд).  
+
+---
+
+### **Вопрос 7**  
+**Правильный ответ:**  
+\( e^{-y/x} + \ln x = 1 \)  
+
+**Пояснение:**  
+Замена \( v = y/x \) приводит к уравнению \( -e^{-v} = \ln x + C \). Условие \( y(1) = 0 \) даёт \( C = -1 \), итог: \( e^{-y/x} + \ln x = 1 \).  
+
+---
+
+### **Вопрос 8**  
+**Правильный ответ:**  
+\( x(Ax + B)e^x \)  
+
+**Пояснение:**  
+Корень \( r = 1 \) совпадает с правой частью \( e^x \), поэтому частное решение умножается на \( x \).  
+
+---
+
+### **Вопрос 9**  
+**Правильный ответ:**  
+\( y = 2e^{3x+12} \)  
+
+**Пояснение:**  
+Уравнение \( y' = 3y \) имеет решение \( y = Ce^{3x} \). Подстановка точки \( (-4, 2) \) даёт \( C = 2e^{12} \).  
+
+---
+
+### **Вопрос 10**  
+**Правильный ответ:**  
+Функция \( \varphi \in C^1(a, b) \), такая что \( \varphi'(x) \equiv f(x, \varphi(x)) \) на \( (a, b) \).  
+
+**Пояснение:**  
+Решение должно быть дифференцируемым и удовлетворять уравнению во всех точках интервала.  
+
+---
+
+### **Вопрос 11**  
+**Правильный ответ:**  
+\( e^{x+y} + y = C \)  
+
+**Пояснение:**  
+Уравнение точное. Интегрирование \( e^{x+y} dx + (e^{x+y} + 1) dy = 0 \) даёт интеграл \( e^{x+y} + y = C \).  
+
+---
+
+### **Вопрос 12**  
+**Правильный ответ:**  
+\( 1 + y'^2 = 2yy'' \)  
+
+**Пояснение:**  
+Замена \( y' = z(y) \) подходит для уравнений без явной зависимости от \( x \). Для \( 1 + y'^2 = 2yy'' \) замена \( z(y) = y' \) снижает порядок.
